@@ -21,6 +21,23 @@ its own $plugin->release line -- no need to reconcile entries across branches.
 
 ## [Unreleased]
 
+### Fixed
+
+- Webservice errors are now documented inside the `200` response (`anyOf`
+  the result or `WebserviceError`), since Moodle's REST server answers every
+  error with HTTP 200. The `default` response, which no real request ever
+  hit, is gone; `403` documents web services or REST being disabled.
+- `WebserviceError` matches what Moodle emits: `errorcode` is optional and
+  `debuginfo` (debugging on only) is declared.
+- A function without a return value documents the JSON literal `null` on
+  success instead of an empty body (3.0: `nullable` + `enum: [null]`).
+- `moodlewsrestformat` is required and `json`-only. It used to advertise a
+  `json` default although Moodle falls back to XML when it is omitted.
+- Request bodies spell out Moodle's PHP bracket encoding
+  (`courseids[0]=2`, `users[0][username]=…`), booleans as `0`/`1`, and
+  unknown keys being rejected, with an `x-moodle-encoding: php-brackets`
+  extension.
+
 ## [1.0.0]
 
 First release.

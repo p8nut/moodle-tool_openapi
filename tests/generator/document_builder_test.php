@@ -86,9 +86,9 @@ final class document_builder_test extends \advanced_testcase {
         $this->assertArrayHasKey('schema', $operation['requestBody']['content']['application/x-www-form-urlencoded']);
         $this->assertArrayNotHasKey('application/json', $operation['requestBody']['content']);
         $this->assertArrayHasKey('content', $operation['responses']['200']);
-        $this->assertSame(
+        $this->assertContains(
             ['$ref' => '#/components/schemas/WebserviceError'],
-            $operation['responses']['default']['content']['application/json']['schema']
+            $operation['responses']['200']['content']['application/json']['schema']['anyOf']
         );
 
         $wsfunctionparam = end($operation['parameters']);
@@ -129,21 +129,104 @@ final class document_builder_test extends \advanced_testcase {
     }
 
     /**
-     * The shared error schema referenced by every operation is well-formed.
+     * The shared error schema matches what webservice/rest/locallib.php's
+     * generate_error() emits: errorcode only when the exception has one,
+     * debuginfo only with debugging on.
      */
     public function test_shared_error_schema_is_well_formed(): void {
         $this->resetAfterTest();
 
         $doc = document_builder::build();
+        $schema = $doc['components']['schemas']['WebserviceError'];
 
-        $this->assertEquals([
-            'type' => 'object',
-            'properties' => [
-                'exception' => ['type' => 'string'],
-                'errorcode' => ['type' => 'string'],
-                'message' => ['type' => 'string'],
-            ],
-            'required' => ['exception', 'errorcode', 'message'],
-        ], $doc['components']['schemas']['WebserviceError']);
+        $this->assertSame('object', $schema['type']);
+        $this->assertSame(['exception', 'message'], $schema['required']);
+        $this->assertSame(
+            ['exception', 'errorcode', 'message', 'debuginfo'],
+            array_keys($schema['properties'])
+        );
+    }
+
+    /**
+     * Moodle's REST server answers errors with HTTP 200, so every error
+     * must be documented inside the 200 response, never under another
+     * status code a client would wait for in vain.
+     */
+    public function test_errors_are_documented_inside_the_200_response(): void {
+        $this->resetAfterTest();
+
+        $doc = document_builder::build();
+
+        foreach ($doc['paths'] as $path => $item) {
+            $responses = $item['post']['responses'];
+            $this->assertArrayNotHasKey('default', $responses, $path);
+            $this->assertContains(
+                ['$ref' => '#/components/schemas/WebserviceError'],
+                $responses['200']['content']['application/json']['schema']['anyOf'],
+                $path
+            );
+            $this->assertArrayHasKey('403', $responses, $path);
+        }
+    }
+
+    /**
+     * A function with no returns_desc answers the JSON literal null on
+     * success, not an empty body.
+     */
+    public function test_a_function_without_return_value_documents_null(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $voidname = null;
+        foreach ($DB->get_records('external_functions', null, 'name ASC') as $function) {
+            try {
+                $info = \core_external\external_api::external_function_info($function);
+            } catch (\Throwable) {
+                continue;
+            }
+            if ($info->returns_desc === null) {
+                $voidname = $info->name;
+                break;
+            }
+        }
+
+        if ($voidname === null) {
+            $this->markTestSkipped('No external function without return value installed on this site.');
+        }
+
+        $doc = document_builder::build();
+        $anyof = $doc['paths']['/' . $voidname]['post']['responses']['200']['content']['application/json']['schema']['anyOf'];
+        $this->assertContains(['type' => 'null'], $anyof);
+    }
+
+    /**
+     * Omitting moodlewsrestformat gets XML back (locallib.php falls back to
+     * xml), and every response schema here is JSON: the parameter must be
+     * required and json, with no default hinting it could be left out.
+     */
+    public function test_moodlewsrestformat_is_required_json(): void {
+        $this->resetAfterTest();
+
+        $doc = document_builder::build();
+        $param = $doc['components']['parameters']['moodlewsrestformat'];
+
+        $this->assertTrue($param['required']);
+        $this->assertSame(['type' => 'string', 'enum' => ['json']], $param['schema']);
+    }
+
+    /**
+     * Moodle parses the form body with PHP's bracket convention
+     * (courseids[0]=2), which no OpenAPI style expresses for arrays of
+     * objects, so the convention is spelled out on every request body.
+     */
+    public function test_request_body_documents_the_php_bracket_encoding(): void {
+        $this->resetAfterTest();
+
+        $doc = document_builder::build();
+        $body = $doc['paths']['/core_webservice_get_site_info']['post']['requestBody'];
+
+        $this->assertSame('php-brackets', $body['x-moodle-encoding']);
+        $this->assertStringContainsString('[0]', $body['description']);
     }
 }

@@ -67,6 +67,15 @@ final class openapi_downgrader {
             return $node;
         }
 
+        // 3.0 has no 'null' type: a null-only schema (a function with no
+        // return value answers the literal null) becomes the one value it
+        // can hold. 3.0 also forbids nullable without a type, hence the
+        // placeholder object type, which enum [null] narrows to null alone.
+        if (($node['type'] ?? null) === 'null') {
+            $node['type'] = 'object';
+            $node['nullable'] = true;
+            $node['enum'] = [null];
+        }
         if (isset($node['type']) && is_array($node['type'])) {
             $realtypes = array_values(array_diff($node['type'], ['null']));
             $node['type'] = $realtypes[0];

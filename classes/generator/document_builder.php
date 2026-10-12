@@ -60,6 +60,20 @@ final class document_builder {
     private const REAL_ENDPOINT = '/webservice/rest/server.php';
 
     /**
+     * How Moodle actually reads the form body, which no OpenAPI encoding
+     * style expresses for arrays of objects. webservice/rest/locallib.php
+     * hands $_POST to validate_parameters() untouched, so nesting is PHP's
+     * own bracket syntax, and external_api::validate_parameters() rejects
+     * any key the function does not declare. PARAM_BOOL only accepts
+     * 0/1 (or a real bool, which a form body cannot carry): "true" fails
+     * core\param::validate_param().
+     */
+    private const REQUEST_ENCODING_NOTE = 'Form-encoded with PHP bracket syntax: arrays and objects nest as '
+        . 'courseids[0]=2&courseids[1]=3 or users[0][username]=jdoe&users[0][email]=j@example.org, '
+        . 'never repeated keys (courseids=2&courseids=3 keeps only the last value). '
+        . 'Booleans are sent as 0 or 1. Keys the function does not declare are rejected.';
+
+    /**
      * Build the OpenAPI 3.1 document for every installed webservice function.
      *
      * @return array
@@ -207,6 +221,8 @@ final class document_builder {
             ],
             'requestBody' => [
                 'required' => true,
+                'description' => self::REQUEST_ENCODING_NOTE,
+                'x-moodle-encoding' => 'php-brackets',
                 'content' => [
                     'application/x-www-form-urlencoded' => ['schema' => type_mapper::map($info->parameters_desc)],
                 ],
@@ -222,33 +238,51 @@ final class document_builder {
     }
 
     /**
-     * The responses object for one function: its real return shape on
-     * success, and the standard Moodle webservice error shape otherwise.
+     * The responses object for one function.
+     *
+     * Errors are documented inside the 200 response, not under another
+     * status: webservice/rest/locallib.php's send_headers() never sets a
+     * status code, so an invalid token, a missing capability or an invalid
+     * parameter all come back as HTTP 200 with a WebserviceError body. anyOf,
+     * not oneOf: a success schema with only optional keys would also match
+     * an error body, and oneOf would then reject a perfectly real response.
+     *
+     * A function without returns_desc answers json_encode(null), the
+     * literal null, on success -- not an empty body.
+     *
+     * The only non-200 answer is server.php refusing before any function
+     * runs, when web services or the REST protocol are disabled.
      *
      * @param external_description|null $returns
      * @return array
      */
     private static function build_responses(?external_description $returns): array {
-        $success = ['description' => 'Successful response.'];
-        if ($returns !== null) {
-            $success['content'] = [
-                'application/json' => ['schema' => type_mapper::map($returns)],
-            ];
-        }
+        $success = $returns === null ? ['type' => 'null'] : type_mapper::map($returns);
 
         return [
-            '200' => $success,
-            'default' => [
-                'description' => 'Moodle webservice error.',
+            '200' => [
+                'description' => 'The function\'s result, or a WebserviceError: Moodle reports every '
+                    . 'webservice error with HTTP 200, so check for an "exception" key.',
                 'content' => [
-                    'application/json' => ['schema' => ['$ref' => '#/components/schemas/WebserviceError']],
+                    'application/json' => [
+                        'schema' => [
+                            'anyOf' => [$success, ['$ref' => '#/components/schemas/WebserviceError']],
+                        ],
+                    ],
                 ],
+            ],
+            '403' => [
+                'description' => 'Web services or the REST protocol are disabled on this site.',
             ],
         ];
     }
 
     /**
      * Schemas shared across every operation, referenced by $ref.
+     *
+     * WebserviceError mirrors webservice/rest/locallib.php's
+     * generate_error(): errorcode is only set when the exception carries
+     * one, debuginfo only when debugging is on.
      *
      * @return array
      */
@@ -257,11 +291,12 @@ final class document_builder {
             'WebserviceError' => [
                 'type' => 'object',
                 'properties' => [
-                    'exception' => ['type' => 'string'],
-                    'errorcode' => ['type' => 'string'],
+                    'exception' => ['type' => 'string', 'description' => 'PHP class of the exception.'],
+                    'errorcode' => ['type' => 'string', 'description' => 'Language string key, when the exception has one.'],
                     'message' => ['type' => 'string'],
+                    'debuginfo' => ['type' => 'string', 'description' => 'Only present when the site has debugging on.'],
                 ],
-                'required' => ['exception', 'errorcode', 'message'],
+                'required' => ['exception', 'message'],
             ],
         ];
     }
@@ -284,12 +319,16 @@ final class document_builder {
                     . 'or any other valid Moodle webservice token.',
                 'schema' => ['type' => 'string'],
             ],
+            // Required and json-only, not optional with a json default:
+            // locallib.php falls back to xml when it is omitted, and every
+            // response schema in this document is JSON.
             'moodlewsrestformat' => [
                 'name' => 'moodlewsrestformat',
                 'in' => 'query',
-                'required' => false,
-                'description' => 'Response format. Moodle defaults to xml when this is omitted.',
-                'schema' => ['type' => 'string', 'enum' => ['json', 'xml'], 'default' => 'json'],
+                'required' => true,
+                'description' => 'Must be json for the responses documented here. Moodle answers in XML '
+                    . 'when this is omitted; that format is not described by this document.',
+                'schema' => ['type' => 'string', 'enum' => ['json']],
             ],
         ];
     }

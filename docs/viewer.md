@@ -68,6 +68,16 @@ query string the operation built.
 Only operations are rewritten. The viewer's own fetch of the document is left
 alone.
 
+### How the body is sent
+
+Swagger UI's own form encoding is not one Moodle reads: it joins an array's
+items with commas, sends an object as JSON and a boolean as `true`. The
+viewer rebuilds the body from the values you typed, in Moodle's bracket
+syntax: an array field's items become `name[0]`, `name[1]`; an object field
+takes JSON (`{"ids": [2, 3]}` becomes `options[ids][0]=2&options[ids][1]=3`);
+booleans are sent as `1`/`0`. An empty field, or a `null` inside the JSON,
+is left out, so Moodle applies the parameter's default.
+
 ## Downloads
 
 The same page downloads the document as JSON or YAML. Both need

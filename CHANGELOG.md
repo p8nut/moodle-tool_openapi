@@ -74,6 +74,10 @@ its own $plugin->release line -- no need to reconcile entries across branches.
 
 ### Added
 
+- The viewer's Try it out sends the body in Moodle's bracket syntax, rebuilt
+  from the values typed in: arrays as `name[0]`, JSON objects flattened to
+  `name[key]`, booleans as `1`/`0`, empty values left out. Swagger UI's own
+  encoding (comma-joined arrays, JSON strings, `true`) is rejected by Moodle.
 - `x-moodle-skipped-functions` at the document root lists the functions that
   could not be introspected, instead of dropping them silently.
 - Core's warning and file items are shared as `components/schemas/Warning`

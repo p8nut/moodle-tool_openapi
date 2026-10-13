@@ -36,13 +36,26 @@ Parameters go in the query string:
 | --- | --- |
 | `wstoken` | Required. A Moodle webservice token. |
 | `wsfunction` | Required, pinned to the operation's function. |
-| `moodlewsrestformat` | Optional; `json` or `xml`. Moodle defaults to `xml` when it is omitted. |
+| `moodlewsrestformat` | Required, `json` only. Moodle answers in XML when it is omitted, and every response schema here is JSON. |
 
 The function's own arguments go in the body as
 `application/x-www-form-urlencoded`. Not JSON: `parse_request()` in
 `webservice/rest/locallib.php` merges `$_GET` and `$_POST` and never reads a
 JSON body, and PHP only populates `$_POST` for form-encoded and multipart
 requests.
+
+Arrays and objects nest with PHP's bracket syntax (`courseids[0]=2`,
+`users[0][username]=jdoe`), booleans are sent as `0`/`1`, and a key the
+function does not declare is rejected. No OpenAPI encoding style says this,
+so the request body's description does, with `x-moodle-encoding:
+php-brackets`.
+
+Types follow what Moodle's cleaning actually produces, not the PHP constant's
+name: `PARAM_RAW` in a response is `string | number | boolean` (the value is
+returned uncleaned), URLs are `uri-reference` and emails carry no `format`
+(both are cleaned to `''` when invalid), a default is documented as the value
+Moodle uses, and a `VALUE_DEFAULT` scalar in a response is `required`, since
+Moodle fills it in.
 
 ## Grouping
 
@@ -62,16 +75,29 @@ group out of a verb (anything with no subsystem match is tagged plain
 `core`).
 
 Every tag in use is also declared at the document root, in alphabetical
-order, so a viewer has something to order the groups by.
+order, so a viewer has something to order the groups by. A document narrowed
+by `?service=` or by the caller's scope declares only the tags its own
+operations use.
 
 ## Responses
 
 Each operation documents its real return shape, mapped from the function's
-`returns_desc`, plus the standard Moodle error body under `default`:
+`returns_desc`, inside the `200` response as `anyOf` that shape or
+`WebserviceError`: Moodle's REST server answers every error -- invalid token,
+missing capability, invalid parameter -- with HTTP 200 and this body:
 
 ```json
-{"exception": "...", "errorcode": "...", "message": "..."}
+{"exception": "...", "errorcode": "...", "message": "...", "debuginfo": "..."}
 ```
+
+`errorcode` is only there when the exception has one, `debuginfo` only with
+debugging on. A function without a return value answers the literal `null`.
+The one non-200 answer, `403`, is web services or REST being disabled.
+
+Core's warning and file items are shared as `#/components/schemas/Warning`
+and `File` wherever a function uses them unchanged, so a generated client has
+one type for each; a function that customised their descriptions keeps its
+own schema.
 
 A function whose schema has no properties is emitted as `{}`, an empty
 object, not `[]` -- an empty PHP array would encode as a JSON array, and
@@ -80,7 +106,9 @@ object, not `[]` -- an empty PHP array would encode as a JSON array, and
 ## Versions and formats
 
 `?version=3.0` downgrades the document: 3.1's `const` becomes a
-single-element `enum`, which is how the same constraint is written in 3.0.
+single-element `enum`, `[X, "null"]` becomes `X` with `nullable: true`,
+several types become an `anyOf`, and a null-only response becomes a nullable
+`enum: [null]`.
 `?format=yaml` emits YAML instead of JSON.
 
 ## Extensions
@@ -94,10 +122,14 @@ equivalent:
 | `x-moodle-capabilities` | Capabilities the function requires |
 | `x-moodle-ajax-allowed` | Whether the function may be called from AJAX |
 
+At the document root, `x-moodle-skipped-functions` lists the functions that
+could not be introspected (see below), when there are any.
+
 ## Functions that cannot be introspected
 
 A site can have an installed function whose implementation class does not
 load -- a broken registration left by another plugin. Introspecting it
 throws, and one such function must not take down the whole catalog, so it is
-skipped and the rest is built. This is not hypothetical: a stock Moodle 4.5
+skipped and the rest is built, and its name is listed under
+`x-moodle-skipped-functions`. This is not hypothetical: a stock Moodle 4.5
 has one.

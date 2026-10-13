@@ -122,12 +122,6 @@ final class scope {
             return $document;
         }
 
-        $allowedpaths = array_map(
-            static fn (string $name): string => '/' . $name,
-            $this->allowedfunctions
-        );
-        $document['paths'] = array_intersect_key($document['paths'], array_flip($allowedpaths));
-
-        return $document;
+        return \tool_openapi\generator\document_builder::keep_functions($document, $this->allowedfunctions);
     }
 }

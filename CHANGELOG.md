@@ -57,6 +57,16 @@ its own $plugin->release line -- no need to reconcile entries across branches.
   `"0"`; `true`, not `1`), and a default Moodle would reject is left out.
 - A `VALUE_DEFAULT` scalar in a response is `required`: Moodle fills it in
   when the function leaves it out.
+- A document narrowed by `?service=` or by the caller's scope declares only
+  the tags its operations use, instead of every group on the site.
+- Blank lines in descriptions are kept as paragraph breaks.
+
+### Added
+
+- `x-moodle-skipped-functions` at the document root lists the functions that
+  could not be introspected, instead of dropping them silently.
+- Core's warning and file items are shared as `components/schemas/Warning`
+  and `File` where a function uses them unchanged.
 
 ## [1.0.0]
 

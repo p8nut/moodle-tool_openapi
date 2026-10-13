@@ -70,6 +70,64 @@ final class document_builder_test extends \advanced_testcase {
     }
 
     /**
+     * A function that cannot be introspected is listed, not silently lost.
+     */
+    public function test_a_function_that_cannot_be_introspected_is_listed(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        $DB->insert_record('external_functions', (object) [
+            'name' => 'local_broken_get_nothing',
+            'classname' => 'local_broken\\does_not_exist',
+            'methodname' => 'execute',
+            'component' => 'local_broken',
+            'capabilities' => '',
+        ]);
+
+        $doc = document_builder::build();
+
+        $this->assertArrayNotHasKey('/local_broken_get_nothing', $doc['paths']);
+        $this->assertContains('local_broken_get_nothing', $doc['x-moodle-skipped-functions']);
+    }
+
+    /**
+     * Narrowing to some functions also narrows the root tag list and the
+     * skipped list, so nothing at the root names what is not shown.
+     */
+    public function test_keep_functions_narrows_paths_tags_and_skipped(): void {
+        $doc = [
+            'tags' => [['name' => 'core_course'], ['name' => 'mod_quiz']],
+            'paths' => [
+                '/core_course_get_courses' => ['post' => ['tags' => ['core_course']]],
+                '/mod_quiz_get_quizzes_by_courses' => ['post' => ['tags' => ['mod_quiz']]],
+            ],
+            'x-moodle-skipped-functions' => ['mod_quiz_broken', 'core_course_broken'],
+        ];
+
+        $kept = document_builder::keep_functions($doc, ['core_course_get_courses', 'core_course_broken']);
+
+        $this->assertSame(['/core_course_get_courses'], array_keys($kept['paths']));
+        $this->assertSame([['name' => 'core_course']], $kept['tags']);
+        $this->assertSame(['core_course_broken'], $kept['x-moodle-skipped-functions']);
+
+        $kept = document_builder::keep_functions($doc, ['core_course_get_courses']);
+        $this->assertArrayNotHasKey('x-moodle-skipped-functions', $kept);
+    }
+
+    /**
+     * core's warning items are shared through components, so a generated
+     * client gets one Warning type instead of one per function.
+     */
+    public function test_core_warnings_are_shared_through_a_ref(): void {
+        $this->resetAfterTest();
+
+        $doc = document_builder::build();
+
+        $this->assertArrayHasKey('Warning', $doc['components']['schemas']);
+        $this->assertStringContainsString('#/components/schemas/Warning', json_encode($doc['paths'], JSON_UNESCAPED_SLASHES));
+    }
+
+    /**
      * core_webservice_get_site_info exists on every Moodle site and returns
      * data, so it exercises both requestBody and a real response schema.
      */

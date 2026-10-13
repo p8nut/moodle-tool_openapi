@@ -42,13 +42,6 @@ final class service_filter {
      * @throws \moodle_exception If no service has that shortname.
      */
     public static function filter(array $document, string $serviceshortname): array {
-        $allowedpaths = array_map(
-            static fn (string $name): string => '/' . $name,
-            service_functions::for_shortname($serviceshortname)
-        );
-
-        $document['paths'] = array_intersect_key($document['paths'], array_flip($allowedpaths));
-
-        return $document;
+        return document_builder::keep_functions($document, service_functions::for_shortname($serviceshortname));
     }
 }

@@ -106,7 +106,8 @@ cache** on the Documentation page.
 
 **Is it one Moodle cannot introspect?** A function whose implementation class
 does not load is skipped so that one broken registration does not take down
-the whole catalog. A stock Moodle 4.5 has at least one.
+the whole catalog, and listed under `x-moodle-skipped-functions` at the
+document root. A stock Moodle 4.5 has at least one.
 
 **Is your scope narrower than you think?** A token or IP rule restricted to a
 list of functions returns only those.

@@ -174,6 +174,28 @@ final class type_mapper_test extends \basic_testcase {
     }
 
     /**
+     * A warning list exactly as core builds it points at the shared item;
+     * one with its own descriptions, or in a request, keeps its schema.
+     */
+    public function test_only_canonical_warning_items_become_a_ref(): void {
+        $ref = ['$ref' => '#/components/schemas/Warning'];
+
+        $this->assertSame($ref, type_mapper::map(new \core_external\external_warnings(), true)['items']);
+        $this->assertNotSame($ref, type_mapper::map(new \core_external\external_warnings('course'), true)['items']);
+        $this->assertNotSame($ref, type_mapper::map(new \core_external\external_warnings())['items']);
+    }
+
+    /**
+     * Blank lines in a description are paragraph breaks the author meant.
+     */
+    public function test_keeps_paragraph_breaks_in_descriptions(): void {
+        $desc = "First paragraph,\n            still first.\n\n            Second paragraph.";
+        $value = new external_value(PARAM_INT, $desc);
+
+        $this->assertSame("First paragraph, still first.\n\nSecond paragraph.", type_mapper::map($value)['description']);
+    }
+
+    /**
      * A structure with no declared keys still maps "properties" as a JSON
      * object, not an empty array -- json_encode() renders a plain empty PHP
      * array as "[]", which is invalid JSON Schema ("properties" must be an

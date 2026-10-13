@@ -18,9 +18,11 @@ namespace tool_openapi\generator;
 
 use core_external\external_api;
 use core_external\external_description;
+use core_external\external_files;
 use core_external\external_multiple_structure;
 use core_external\external_single_structure;
 use core_external\external_value;
+use core_external\external_warnings;
 
 /**
  * Converts a Moodle external API parameter/return description into JSON Schema.
@@ -89,7 +91,7 @@ final class type_mapper {
 
         if ($description instanceof external_multiple_structure) {
             $schema['type'] = 'array';
-            $schema['items'] = self::map($description->content, $response);
+            $schema['items'] = self::ref_if_shared(self::map($description->content, $response));
         } else if ($description instanceof external_single_structure) {
             $schema += self::map_object($description, $response);
         } else if ($response && $description instanceof external_value && $description->type === PARAM_RAW) {
@@ -107,6 +109,41 @@ final class type_mapper {
 
         if ($description->allownull) {
             $schema['type'] = array_merge((array) $schema['type'], ['null']);
+        }
+
+        return $schema;
+    }
+
+    /**
+     * Item schemas that hundreds of functions repeat word for word: core's
+     * warning and file structures, as they come out of a response. Shared
+     * through components so a client generator makes one type of each.
+     *
+     * @return array<string, array> Component name => schema.
+     */
+    public static function shared_schemas(): array {
+        return [
+            'Warning' => self::map((new external_warnings())->content, true),
+            'File' => self::map((new external_files())->content, true),
+        ];
+    }
+
+    /**
+     * Swap an item schema for a $ref when it is exactly a shared one. Only
+     * an exact match: a function that customised a warning's descriptions
+     * keeps its own schema rather than lose them.
+     *
+     * @param array $schema
+     * @return array
+     */
+    private static function ref_if_shared(array $schema): array {
+        static $shared = null;
+        $shared ??= self::shared_schemas();
+
+        foreach ($shared as $name => $candidate) {
+            if ($schema === $candidate) {
+                return ['$ref' => '#/components/schemas/' . $name];
+            }
         }
 
         return $schema;
@@ -184,12 +221,16 @@ final class type_mapper {
 
     /**
      * Collapse the literal whitespace Moodle's own source code leaves in
-     * multi-line external_value descriptions into a single line.
+     * multi-line external_value descriptions, keeping blank lines: those
+     * separate paragraphs or list items the author meant, and a viewer
+     * renders them as such.
      *
      * @param string $desc
      * @return string
      */
     private static function normalise_description(string $desc): string {
-        return trim(preg_replace('/\s+/', ' ', $desc));
+        $paragraphs = preg_split('/\n\s*\n/', trim($desc));
+
+        return implode("\n\n", array_map(static fn (string $p): string => trim(preg_replace('/\s+/', ' ', $p)), $paragraphs));
     }
 }

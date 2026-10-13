@@ -83,17 +83,20 @@ final class document_builder {
 
         $paths = [];
         $tags = [];
+        $skipped = [];
         foreach ($DB->get_records('external_functions', null, 'name ASC') as $function) {
             $item = self::build_path_or_skip($function);
-            if ($item !== null) {
-                $paths['/' . $function->name] = $item;
-                foreach ($item['post']['tags'] as $tag) {
-                    $tags[$tag] = true;
-                }
+            if ($item === null) {
+                $skipped[] = $function->name;
+                continue;
+            }
+            $paths['/' . $function->name] = $item;
+            foreach ($item['post']['tags'] as $tag) {
+                $tags[$tag] = true;
             }
         }
 
-        return [
+        $document = [
             'openapi' => '3.1.0',
             'info' => self::build_info(),
             'servers' => [['url' => $CFG->wwwroot]],
@@ -104,6 +107,57 @@ final class document_builder {
                 'parameters' => self::build_shared_parameters(),
             ],
         ];
+        if ($skipped !== []) {
+            $document['x-moodle-skipped-functions'] = $skipped;
+        }
+
+        return $document;
+    }
+
+    /**
+     * Narrow a document to some functions: their paths, the tags those
+     * paths use, and the skipped functions among them. Every narrowing
+     * (a ?service=, an access scope) goes through here, so nothing at the
+     * document's root names a function or group outside what is shown.
+     *
+     * @param array $document A document as returned by build().
+     * @param string[] $names Function names to keep.
+     * @return array
+     */
+    public static function keep_functions(array $document, array $names): array {
+        $keep = array_flip($names);
+        $document['paths'] = array_filter(
+            $document['paths'],
+            static fn (string $path): bool => isset($keep[ltrim($path, '/')]),
+            ARRAY_FILTER_USE_KEY
+        );
+
+        if (isset($document['tags'])) {
+            $used = [];
+            foreach ($document['paths'] as $item) {
+                foreach ($item['post']['tags'] ?? [] as $tag) {
+                    $used[$tag] = true;
+                }
+            }
+            $document['tags'] = array_values(array_filter(
+                $document['tags'],
+                static fn (array $tag): bool => isset($used[$tag['name']])
+            ));
+        }
+
+        if (isset($document['x-moodle-skipped-functions'])) {
+            $skipped = array_values(array_filter(
+                $document['x-moodle-skipped-functions'],
+                static fn (string $name): bool => isset($keep[$name])
+            ));
+            if ($skipped === []) {
+                unset($document['x-moodle-skipped-functions']);
+            } else {
+                $document['x-moodle-skipped-functions'] = $skipped;
+            }
+        }
+
+        return $document;
     }
 
     /**
@@ -170,6 +224,9 @@ final class document_builder {
      * CI) whose implementation class does not autoload and has no working
      * legacy classpath fallback either, so external_function_info() throws.
      * One such function must not take down the whole catalog.
+     *
+     * The caller lists it under x-moodle-skipped-functions, so a missing
+     * function is visible in the document rather than silently absent.
      *
      * Deliberately not reported via debugging(): the broken registration
      * belongs to the other plugin, not to tool_openapi, and Moodle's own
@@ -282,12 +339,13 @@ final class document_builder {
      *
      * WebserviceError mirrors webservice/rest/locallib.php's
      * generate_error(): errorcode is only set when the exception carries
-     * one, debuginfo only when debugging is on.
+     * one, debuginfo only when debugging is on. The others are type_mapper's
+     * shared warning and file items.
      *
      * @return array
      */
     private static function build_shared_schemas(): array {
-        return [
+        return type_mapper::shared_schemas() + [
             'WebserviceError' => [
                 'type' => 'object',
                 'properties' => [

@@ -140,4 +140,24 @@ final class documentation_page_test extends \advanced_testcase {
             $this->assertStringContainsString('aria-hidden="true"', $data[$icon]);
         }
     }
+
+    /**
+     * The restful viewer loads the restful document, and the REST / RESTful
+     * switch is offered only where webservice_restful is installed.
+     */
+    public function test_viewer_follows_the_chosen_protocol(): void {
+        global $PAGE;
+
+        $this->resetAfterTest();
+
+        $data = (new viewer_page('restful'))->export_for_template($PAGE->get_renderer('core'));
+
+        $this->assertStringContainsString('protocol=restful', $data['specurl']);
+        if (array_key_exists('restful', \core_component::get_plugin_list('webservice'))) {
+            $this->assertSame(['REST', 'RESTful'], array_column($data['protocols'], 'label'));
+            $this->assertSame([false, true], array_column($data['protocols'], 'active'));
+        } else {
+            $this->assertSame([], $data['protocols']);
+        }
+    }
 }

@@ -78,6 +78,19 @@ takes JSON (`{"ids": [2, 3]}` becomes `options[ids][0]=2&options[ids][1]=3`);
 booleans are sent as `1`/`0`. An empty field, or a `null` inside the JSON,
 is left out, so Moodle applies the parameter's default.
 
+### The RESTful switch
+
+When Catalyst's
+[webservice_restful](https://github.com/catalyst/moodle-webservice_restful)
+is installed, a **REST / RESTful** switch sits above the catalog. RESTful
+loads the `?protocol=restful` document (see
+[openapi-document.md](openapi-document.md#the-restful-protocol)) and Try it
+out sends what that document describes, untouched: `POST
+/webservice/restful/server.php/<function>`, the token from Authorize in the
+`Authorization` header, and the body as JSON, typed into the editor as is.
+The protocol must be enabled, and the token's user needs
+`webservice/restful:use`.
+
 ## Downloads
 
 The same page downloads the document as JSON or YAML. Both need

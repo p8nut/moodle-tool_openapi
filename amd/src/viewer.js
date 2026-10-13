@@ -141,8 +141,9 @@ const retarget = (endpoint, request, getSystem) => {
  * @param {String} specUrl Where to fetch the OpenAPI document from
  * @param {String} endpoint Absolute URL of Moodle's REST server
  * @param {String} elementId Id of the element to render into
+ * @param {String} protocol 'rest' (core, the default) or 'restful' (webservice_restful)
  */
-export const init = (specUrl, endpoint, elementId) => {
+export const init = (specUrl, endpoint, elementId, protocol = 'rest') => {
     const container = document.getElementById(elementId);
     const swaggerUi = window.SwaggerUIBundle;
 
@@ -161,6 +162,10 @@ export const init = (specUrl, endpoint, elementId) => {
         defaultModelsExpandDepth: 0,
         tryItOutEnabled: true,
         withCredentials: true,
-        requestInterceptor: (request) => retarget(endpoint, request, () => ui.getSystem()),
+        // webservice_restful's document already names the real URL, JSON body
+        // and Authorization header: Swagger UI's own request is the right one.
+        requestInterceptor: protocol === 'restful'
+            ? (request) => Object.assign(request, {credentials: 'same-origin'})
+            : (request) => retarget(endpoint, request, () => ui.getSystem()),
     });
 };

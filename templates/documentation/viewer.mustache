@@ -36,6 +36,7 @@
     * backurl / backlabel - The way back to the documentation page
     * libraryurl - The bundled Swagger UI script
     * elementid - Id of the container Swagger UI renders into
+    * protocols - REST / RESTful switch (label, url, active), empty without webservice_restful
 
     Example context (json):
     {
@@ -46,13 +47,25 @@
         "backurl": "https://example.com/documentation/index.php",
         "backlabel": "Back to documentation",
         "libraryurl": "https://example.com/thirdparty/swagger-ui/swagger-ui-bundle.js",
-        "elementid": "tool_openapi-viewer"
+        "elementid": "tool_openapi-viewer",
+        "protocols": [
+            {"label": "REST", "url": "https://example.com/viewer.php?protocol=rest", "active": true},
+            {"label": "RESTful", "url": "https://example.com/viewer.php?protocol=restful", "active": false}
+        ]
     }
 }}
 {{> tool_openapi/local/back_link}}
 
 <h3>{{heading}}</h3>
 <p class="text-muted">{{headingdesc}}</p>
+
+{{#protocols.0}}
+<div class="btn-group mb-3" role="group">
+    {{#protocols}}
+    <a href="{{url}}" class="btn btn-sm {{#active}}btn-primary{{/active}}{{^active}}btn-outline-primary{{/active}}"{{#active}} aria-current="page"{{/active}}>{{label}}</a>
+    {{/protocols}}
+</div>
+{{/protocols.0}}
 
 {{{restwarning}}}
 {{{tokenhint}}}

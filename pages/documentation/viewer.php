@@ -36,11 +36,13 @@ admin_externalpage_setup('tool_openapi_viewer');
 
 $pagetitle = get_string('viewerheading', 'tool_openapi');
 
-$PAGE->set_url(new moodle_url('/admin/tool/openapi/pages/documentation/viewer.php'));
+$protocol = optional_param('protocol', 'rest', PARAM_ALPHA) === 'restful' ? 'restful' : 'rest';
+
+$PAGE->set_url(new moodle_url('/admin/tool/openapi/pages/documentation/viewer.php', ['protocol' => $protocol]));
 $PAGE->navbar->add($pagetitle);
 $PAGE->set_title($pagetitle);
 
-$renderable = new \tool_openapi\output\documentation\viewer_page();
+$renderable = new \tool_openapi\output\documentation\viewer_page($protocol);
 $context = $renderable->export_for_template($OUTPUT);
 
 $PAGE->requires->css(new moodle_url('/admin/tool/openapi/thirdparty/swagger-ui/swagger-ui.css'));
@@ -48,6 +50,7 @@ $PAGE->requires->js_call_amd('tool_openapi/viewer', 'init', [
     $context['specurl'],
     $context['endpoint'],
     $context['elementid'],
+    $protocol,
 ]);
 
 echo $OUTPUT->header();

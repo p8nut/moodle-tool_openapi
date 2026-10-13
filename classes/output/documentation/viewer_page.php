@@ -43,6 +43,18 @@ class viewer_page implements \renderable, \templatable {
     public const ELEMENT_ID = 'tool_openapi-viewer';
 
     /**
+     * Constructor.
+     *
+     * @param string $protocol 'rest' (core) or 'restful' (Catalyst's
+     *     webservice_restful): which protocol the document and Try it out use.
+     */
+    public function __construct(
+        /** @var string Which protocol the viewer documents. */
+        private readonly string $protocol = 'rest',
+    ) {
+    }
+
+    /**
      * Export for the template.
      *
      * @param renderer_base $output
@@ -56,6 +68,7 @@ class viewer_page implements \renderable, \templatable {
         $specurl = new \moodle_url('/admin/tool/openapi/pages/documentation/download.php', [
             'format' => 'json',
             'inline' => 1,
+            'protocol' => $this->protocol,
         ]);
 
         $library = new \moodle_url('/admin/tool/openapi/thirdparty/swagger-ui/swagger-ui-bundle.js');
@@ -64,7 +77,7 @@ class viewer_page implements \renderable, \templatable {
             'heading' => get_string('viewerheading', 'tool_openapi'),
             'headingdesc' => get_string('viewerheading_desc', 'tool_openapi'),
             'tokenhint' => $output->notification(
-                get_string('viewertokenhint', 'tool_openapi'),
+                get_string($this->protocol === 'restful' ? 'viewertokenhint_restful' : 'viewertokenhint', 'tool_openapi'),
                 \core\output\notification::NOTIFY_INFO,
                 false
             ),
@@ -75,6 +88,7 @@ class viewer_page implements \renderable, \templatable {
             'specurl' => $specurl->out(false),
             'libraryurl' => $library->out(false),
             'endpoint' => $CFG->wwwroot . '/webservice/rest/server.php',
+            'protocols' => $this->protocol_switch(),
         ];
     }
 
@@ -92,7 +106,7 @@ class viewer_page implements \renderable, \templatable {
      * @return string Empty when REST is available.
      */
     private function rest_warning(renderer_base $output): string {
-        if (webservice_protocol_is_enabled('rest')) {
+        if (webservice_protocol_is_enabled($this->protocol)) {
             return '';
         }
 
@@ -103,5 +117,25 @@ class viewer_page implements \renderable, \templatable {
             \core\output\notification::NOTIFY_WARNING,
             false
         );
+    }
+
+    /**
+     * The REST / RESTful switch, or nothing when webservice_restful is not
+     * installed: core's REST protocol is then the only one there is.
+     *
+     * @return array[] One entry per protocol: label, url, active.
+     */
+    private function protocol_switch(): array {
+        if (!array_key_exists('restful', \core_component::get_plugin_list('webservice'))) {
+            return [];
+        }
+
+        $switch = [];
+        foreach (['rest' => 'REST', 'restful' => 'RESTful'] as $protocol => $label) {
+            $url = new \moodle_url('/admin/tool/openapi/pages/documentation/viewer.php', ['protocol' => $protocol]);
+            $switch[] = ['label' => $label, 'url' => $url->out(false), 'active' => $protocol === $this->protocol];
+        }
+
+        return $switch;
     }
 }

@@ -49,8 +49,15 @@ if (!in_array($format, ['json', 'yaml'], true)) {
 // nowhere to put a file: asking for it inline is what keeps the browser
 // from turning that fetch into a download.
 $inline = optional_param('inline', 0, PARAM_BOOL);
+$protocol = optional_param('protocol', 'rest', PARAM_ALPHA);
+if (!in_array($protocol, ['rest', 'restful'], true)) {
+    throw new \invalid_parameter_exception('Unknown protocol: ' . $protocol);
+}
 
 $document = \tool_openapi\local\document_cache::get();
+if ($protocol === 'restful') {
+    $document = \tool_openapi\generator\restful_converter::convert($document);
+}
 
 if (!$inline) {
     $filename = clean_filename(format_string($SITE->shortname)) . '-openapi.' . ($format === 'yaml' ? 'yaml' : 'json');

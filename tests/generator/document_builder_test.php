@@ -47,7 +47,8 @@ final class document_builder_test extends \advanced_testcase {
         $this->assertSame($CFG->wwwroot, $doc['servers'][0]['url']);
         $this->assertArrayHasKey('paths', $doc);
         $this->assertArrayHasKey('components', $doc);
-        $this->assertArrayHasKey('wstoken', $doc['components']['parameters']);
+        $this->assertSame('apiKey', $doc['components']['securitySchemes']['wstoken']['type']);
+        $this->assertSame([['wstoken' => []]], $doc['security']);
         $this->assertArrayHasKey('moodlewsrestformat', $doc['components']['parameters']);
     }
 
@@ -151,8 +152,9 @@ final class document_builder_test extends \advanced_testcase {
 
         $wsfunctionparam = end($operation['parameters']);
         $this->assertSame('wsfunction', $wsfunctionparam['name']);
-        $this->assertSame('core_webservice_get_site_info', $wsfunctionparam['schema']['const']);
-        $this->assertContains(['$ref' => '#/components/parameters/wstoken'], $operation['parameters']);
+        $this->assertSame(['core_webservice_get_site_info'], $wsfunctionparam['schema']['enum']);
+        $this->assertSame('core_webservice_get_site_info', $wsfunctionparam['schema']['default']);
+        $this->assertNotContains('wstoken', array_column($operation['parameters'], 'name'));
     }
 
     /**

@@ -106,4 +106,4 @@ $string['viewer'] = 'Abrir el visor interactivo';
 $string['viewerheading'] = 'Visor interactivo';
 $string['viewerheading_desc'] = 'Consulta todas las funciones que expone este sitio, con sus parámetros, la forma de su respuesta y las capacidades que requiere.';
 $string['viewerrestdisabled'] = '«Try it out» fallará mientras este sitio tenga los servicios web o el protocolo REST desactivados: Moodle responde a esas peticiones con un 403 vacío. Consultar el catálogo de abajo funciona igual. <a href="{$a}">Activar los servicios web</a>.';
-$string['viewertokenhint'] = 'Las peticiones enviadas desde aquí van al endpoint REST de este sitio. Pon un token en el campo wstoken de la operación antes de usar «Try it out» o Moodle rechazará la petición.';
+$string['viewertokenhint'] = 'Las peticiones enviadas desde aquí van al endpoint REST de este sitio. Introduce un token de servicio web una vez en «Authorize» antes de usar «Try it out» o Moodle rechazará la petición.';

@@ -106,4 +106,4 @@ $string['viewer'] = 'Ouvrir la visionneuse interactive';
 $string['viewerheading'] = 'Visionneuse interactive';
 $string['viewerheading_desc'] = 'Parcourez toutes les fonctions exposées par ce site, avec leurs paramètres, la forme de leur réponse et les capacités qu\'elles exigent.';
 $string['viewerrestdisabled'] = '« Try it out » échouera tant que ce site aura les services web ou le protocole REST désactivés : Moodle répond à ces requêtes par un 403 vide. Parcourir le catalogue ci-dessous fonctionne quand même. <a href="{$a}">Activer les services web</a>.';
-$string['viewertokenhint'] = 'Les requêtes envoyées d\'ici vont vers le point d\'accès REST de ce site. Renseignez un jeton dans le champ wstoken de l\'opération avant d\'utiliser « Try it out », sinon Moodle rejettera la requête.';
+$string['viewertokenhint'] = 'Les requêtes envoyées d\'ici vont vers le point d\'accès REST de ce site. Renseignez une fois un jeton de service web dans « Authorize » avant d\'utiliser « Try it out », sinon Moodle rejettera la requête.';

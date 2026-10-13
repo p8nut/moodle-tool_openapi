@@ -42,7 +42,7 @@ This is Moodle's own configuration, not the plugin's: **Site administration
 a bare `403` with an empty body, which explains nothing at all — so the
 viewer checks the same condition and warns you before you press Execute.
 
-**2. You need a token in the `wstoken` field.** A Moodle *webservice* token,
+**2. You need a token, entered once under Authorize.** A Moodle *webservice* token,
 not one issued by this plugin: this is a real API call, and plugin tokens
 only authorize reading documentation. Create one under **Site administration
 → Server → Web services → Manage tokens**.
@@ -51,8 +51,9 @@ only authorize reading documentation. Create one under **Site administration
 service that includes it. The viewer documents what the site exposes; it does
 not grant anything.
 
-`wsfunction` arrives filled in — the document pins it per operation — and
-`moodlewsrestformat` defaults to `json`. Without that last one Moodle
+Swagger UI adds it to every request as `?wstoken=`. `wsfunction` arrives
+filled in — the document pins it per operation with a one-value `enum` and
+its `default` — and `moodlewsrestformat` defaults to `json`. Without that last one Moodle
 answers in XML.
 
 ### Why the URL in the request is not the URL in the path

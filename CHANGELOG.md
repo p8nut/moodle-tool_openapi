@@ -61,6 +61,16 @@ its own $plugin->release line -- no need to reconcile entries across branches.
   the tags its operations use, instead of every group on the site.
 - Blank lines in descriptions are kept as paragraph breaks.
 
+### Changed
+
+- `wstoken` is a security scheme (`apiKey` in the query) instead of a
+  parameter of every operation: the viewer asks for it once under
+  Authorize, and a generated client takes it as auth. The request on the
+  wire is unchanged. Clients generated before this pass it per call and need
+  regenerating.
+- `wsfunction` is a one-value `enum` with a `default` instead of a `const`,
+  so the viewer fills it in.
+
 ### Added
 
 - `x-moodle-skipped-functions` at the document root lists the functions that

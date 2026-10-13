@@ -100,11 +100,13 @@ final class document_builder {
             'openapi' => '3.1.0',
             'info' => self::build_info(),
             'servers' => [['url' => $CFG->wwwroot]],
+            'security' => [['wstoken' => []]],
             'tags' => self::build_tags(array_keys($tags)),
             'paths' => $paths,
             'components' => [
                 'schemas' => self::build_shared_schemas(),
                 'parameters' => self::build_shared_parameters(),
+                'securitySchemes' => self::build_security_schemes(),
             ],
         ];
         if ($skipped !== []) {
@@ -267,13 +269,14 @@ final class document_builder {
             'x-moodle-capabilities' => empty($info->capabilities) ? [] : explode(',', $info->capabilities),
             'x-moodle-ajax-allowed' => $info->allowed_from_ajax ?? false,
             'parameters' => [
-                ['$ref' => '#/components/parameters/wstoken'],
                 ['$ref' => '#/components/parameters/moodlewsrestformat'],
+                // An enum of one with a default, not a const: a viewer fills
+                // a default in, and Swagger UI does nothing with const.
                 [
                     'name' => 'wsfunction',
                     'in' => 'query',
                     'required' => true,
-                    'schema' => ['type' => 'string', 'const' => $info->name],
+                    'schema' => ['type' => 'string', 'enum' => [$info->name], 'default' => $info->name],
                 ],
             ],
             'requestBody' => [
@@ -360,6 +363,27 @@ final class document_builder {
     }
 
     /**
+     * The webservice token, as an apiKey in the query string: on the wire
+     * it is the same ?wstoken= as a parameter, but a viewer asks for it once
+     * (Swagger UI's Authorize) and a generated client takes it as auth
+     * instead of an argument to every call.
+     *
+     * @return array
+     */
+    private static function build_security_schemes(): array {
+        return [
+            'wstoken' => [
+                'type' => 'apiKey',
+                'in' => 'query',
+                'name' => 'wstoken',
+                'description' => 'A Moodle webservice token (Site administration > Server > Web services > '
+                    . 'Manage tokens) whose service includes the function. Tokens issued by this plugin '
+                    . 'only read documentation.',
+            ],
+        ];
+    }
+
+    /**
      * Parameters identical across every operation, referenced by $ref
      * instead of repeated in each of the (possibly hundreds of) operations.
      * wsfunction is not here -- its value differs per operation, see
@@ -368,16 +392,7 @@ final class document_builder {
      * @return array
      */
     private static function build_shared_parameters(): array {
-        return [
-            'wstoken' => [
-                'name' => 'wstoken',
-                'in' => 'query',
-                'required' => true,
-                'description' => 'A token issued from this site\'s OpenAPI documentation Tokens page, '
-                    . 'or any other valid Moodle webservice token.',
-                'schema' => ['type' => 'string'],
-            ],
-            // Required and json-only, not optional with a json default:
+        return [            // Required and json-only, not optional with a json default:
             // locallib.php falls back to xml when it is omitted, and every
             // response schema in this document is JSON.
             'moodlewsrestformat' => [

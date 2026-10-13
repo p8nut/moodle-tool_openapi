@@ -34,8 +34,8 @@ Parameters go in the query string:
 
 | Parameter | Notes |
 | --- | --- |
-| `wstoken` | Required. A Moodle webservice token. |
-| `wsfunction` | Required, pinned to the operation's function. |
+| `wstoken` | Required. A Moodle webservice token, declared as the `wstoken` security scheme (`apiKey` in the query) rather than a parameter, so a viewer asks for it once and a generated client takes it as auth. |
+| `wsfunction` | Required, pinned to the operation's function by a one-value `enum` with that `default`, so a viewer fills it in. |
 | `moodlewsrestformat` | Required, `json` only. Moodle answers in XML when it is omitted, and every response schema here is JSON. |
 
 The function's own arguments go in the body as

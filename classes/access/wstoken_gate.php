@@ -49,35 +49,88 @@ final class wstoken_gate implements access_gate {
     /**
      * Authorizes via an existing Moodle webservice token.
      *
+     * A token documents exactly what it could call, so it is accepted only
+     * when webservice/lib.php's authenticate_user() would accept it: same
+     * checks, minus its side effects (logging the user in, deleting expired
+     * tokens, login-failed events) which have no place on a read-only
+     * endpoint. Maintenance mode is not checked: reading documentation runs
+     * no function.
+     *
      * @param string|null $requestedservice Unused: the scope is always the token's own service.
      * @return scope|null
      */
     public function authorize(?string $requestedservice): ?scope {
-        global $DB;
+        global $CFG, $DB;
 
         $token = optional_param('wstoken', '', PARAM_ALPHANUM);
-        if ($token === '') {
+        if ($token === '' || empty($CFG->enablewebservices)) {
             return null;
         }
 
         $record = $DB->get_record('external_tokens', ['token' => $token], '*', IGNORE_MISSING);
-        if (!$record) {
-            return null;
-        }
-        if (!empty($record->validuntil) && $record->validuntil < time()) {
+        if (!$record || !self::token_is_usable($record)) {
             return null;
         }
 
-        $service = $DB->get_record(
-            'external_services',
-            ['id' => $record->externalserviceid, 'enabled' => 1],
-            'id',
-            IGNORE_MISSING
-        );
-        if (!$service) {
+        $user = $DB->get_record('user', ['id' => $record->userid, 'deleted' => 0], '*', IGNORE_MISSING);
+        if (!$user || empty($user->confirmed) || !empty($user->suspended) || $user->auth === 'nologin') {
+            return null;
+        }
+
+        $service = $DB->get_record('external_services', ['id' => $record->externalserviceid, 'enabled' => 1], '*', IGNORE_MISSING);
+        if (!$service || !self::service_allows($service, $user)) {
             return null;
         }
 
         return scope::limited_to(service_functions::for_id((int) $service->id));
+    }
+
+    /**
+     * The token's own limits: expiry, IP restriction, and for a
+     * session-bound token, its session still existing.
+     *
+     * @param \stdClass $record An external_tokens row.
+     * @return bool
+     */
+    private static function token_is_usable(\stdClass $record): bool {
+        if (!empty($record->validuntil) && $record->validuntil < time()) {
+            return false;
+        }
+        if (!empty($record->iprestriction) && !address_in_subnet(getremoteaddr(), $record->iprestriction)) {
+            return false;
+        }
+
+        return empty($record->sid) || \core\session\manager::session_exists($record->sid);
+    }
+
+    /**
+     * The service's own limits on who may use it: a required capability,
+     * and for a restricted service, the user's entry in its allowed users
+     * with that entry's expiry and IP restriction.
+     *
+     * @param \stdClass $service An external_services row.
+     * @param \stdClass $user
+     * @return bool
+     */
+    private static function service_allows(\stdClass $service, \stdClass $user): bool {
+        global $DB;
+
+        if ($service->requiredcapability && !has_capability($service->requiredcapability, \context_system::instance(), $user)) {
+            return false;
+        }
+        if (!$service->restrictedusers) {
+            return true;
+        }
+
+        $allowed = $DB->get_record(
+            'external_services_users',
+            ['externalserviceid' => $service->id, 'userid' => $user->id],
+            '*',
+            IGNORE_MISSING
+        );
+
+        return $allowed
+            && (empty($allowed->validuntil) || $allowed->validuntil >= time())
+            && (empty($allowed->iprestriction) || address_in_subnet(getremoteaddr(), $allowed->iprestriction));
     }
 }

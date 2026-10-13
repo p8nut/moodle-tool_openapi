@@ -21,6 +21,15 @@ its own $plugin->release line -- no need to reconcile entries across branches.
 
 ## [Unreleased]
 
+### Security
+
+- The existing webservice token method now accepts a token only when
+  Moodle's REST endpoint would: it enforces the token's IP restriction, its
+  session for a session-bound token, web services being enabled, the user
+  being confirmed, not suspended and not `nologin`, and the service's
+  required capability and allowed users. It used to check only expiry and
+  the service being enabled.
+
 ### Fixed
 
 - Webservice errors are now documented inside the `200` response (`anyOf`

@@ -16,6 +16,7 @@
 
 namespace tool_openapi\generator;
 
+use core_external\external_api;
 use core_external\external_description;
 use core_external\external_multiple_structure;
 use core_external\external_single_structure;
@@ -43,6 +44,11 @@ final class type_mapper {
      * component name, ...), not its JSON representation, so leaving them
      * out here and falling back to "string" is correct, not incomplete.
      *
+     * URLs are uri-references, not uris: PARAM_URL accepts relative URLs,
+     * PARAM_LOCALURL root-relative ones, and both clean an invalid value to
+     * ''. PARAM_EMAIL has no format for the same reason: an invalid address
+     * is cleaned to '', which format "email" rejects.
+     *
      * @var array<string, array<string, string>>
      */
     private const SCALAR_TYPES = [
@@ -50,20 +56,28 @@ final class type_mapper {
         PARAM_FLOAT => ['type' => 'number'],
         PARAM_LOCALISEDFLOAT => ['type' => 'number'],
         PARAM_BOOL => ['type' => 'boolean'],
-        PARAM_URL => ['type' => 'string', 'format' => 'uri'],
-        PARAM_LOCALURL => ['type' => 'string', 'format' => 'uri'],
-        PARAM_EMAIL => ['type' => 'string', 'format' => 'email'],
+        PARAM_PERMISSION => ['type' => 'integer'],
+        PARAM_URL => ['type' => 'string', 'format' => 'uri-reference'],
+        PARAM_LOCALURL => ['type' => 'string', 'format' => 'uri-reference'],
     ];
+
+    /**
+     * PARAM_RAW in a response: clean_returnvalue() hands the value back
+     * uncleaned, so a PHP int, float or bool comes out as a JSON number or
+     * boolean. A request body is form-encoded, where everything is a string.
+     */
+    private const RAW_RESPONSE_TYPE = ['type' => ['string', 'number', 'boolean']];
 
     /**
      * Convert one node of a Moodle parameter/return description tree into
      * JSON Schema, recursing into its children.
      *
      * @param external_description|null $description Null for a function with no return value.
+     * @param bool $response True when $description is a function's returns, false for its parameters.
      * @return array|null The JSON Schema fragment, or null when $description is null.
      * @throws \coding_exception If $description is a subclass this method does not know how to map.
      */
-    public static function map(?external_description $description): ?array {
+    public static function map(?external_description $description, bool $response = false): ?array {
         if ($description === null) {
             return null;
         }
@@ -75,9 +89,11 @@ final class type_mapper {
 
         if ($description instanceof external_multiple_structure) {
             $schema['type'] = 'array';
-            $schema['items'] = self::map($description->content);
+            $schema['items'] = self::map($description->content, $response);
         } else if ($description instanceof external_single_structure) {
-            $schema += self::map_object($description);
+            $schema += self::map_object($description, $response);
+        } else if ($response && $description instanceof external_value && $description->type === PARAM_RAW) {
+            $schema += self::RAW_RESPONSE_TYPE;
         } else if ($description instanceof external_value) {
             $schema += self::SCALAR_TYPES[$description->type] ?? ['type' => 'string'];
         } else {
@@ -90,7 +106,7 @@ final class type_mapper {
         }
 
         if ($description->allownull) {
-            $schema['type'] = [$schema['type'], 'null'];
+            $schema['type'] = array_merge((array) $schema['type'], ['null']);
         }
 
         return $schema;
@@ -105,18 +121,26 @@ final class type_mapper {
      * concern (turning a structure's keys into an object schema), not a
      * split done only to satisfy the linter.
      *
+     * In a response, a missing VALUE_DEFAULT scalar is filled in by
+     * clean_returnvalue(), so it is always there: required, not defaulted.
+     * A missing VALUE_DEFAULT structure is left out, so it stays optional.
+     *
      * @param external_single_structure $description
+     * @param bool $response See map().
      * @return array
      */
-    private static function map_object(external_single_structure $description): array {
+    private static function map_object(external_single_structure $description, bool $response): array {
         $properties = [];
         $required = [];
         foreach ($description->keys as $key => $child) {
-            $properties[$key] = self::map($child);
-            if ($child->required === VALUE_REQUIRED) {
-                $required[] = $key;
-            } else if ($child->required === VALUE_DEFAULT) {
-                $properties[$key]['default'] = $child->default;
+            $properties[$key] = self::map($child, $response);
+            $isdefault = $child->required === VALUE_DEFAULT;
+            if ($child->required === VALUE_REQUIRED || ($response && $isdefault && $child instanceof external_value)) {
+                // Cast: a numeric key (core_message's conversation types) is
+                // an int in PHP, but JSON Schema's "required" lists strings.
+                $required[] = (string) $key;
+            } else if ($isdefault && !$response) {
+                self::add_default($properties[$key], $child);
             }
         }
 
@@ -131,6 +155,31 @@ final class type_mapper {
         }
 
         return $schema;
+    }
+
+    /**
+     * Document a VALUE_DEFAULT parameter's default as the value Moodle
+     * actually uses: a scalar's default is declared as written in PHP ('0'
+     * for an int, 0 for a bool...), and validate_parameters() cleans it
+     * like a sent value. clean_returnvalue() does that cleaning and turns
+     * PARAM_BOOL into a real boolean. A default Moodle itself would reject
+     * (null on a non-nullable value) is left undocumented.
+     *
+     * @param array $schema The property schema to add the default to.
+     * @param external_description $child
+     */
+    private static function add_default(array &$schema, external_description $child): void {
+        if (!$child instanceof external_value) {
+            $schema['default'] = $child->default;
+            return;
+        }
+
+        try {
+            $schema['default'] = external_api::clean_returnvalue($child, $child->default);
+        } catch (\Exception) {
+            // Moodle would reject this default itself: nothing to document.
+            unset($schema['default']);
+        }
     }
 
     /**

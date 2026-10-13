@@ -55,8 +55,13 @@ final class type_mapper_test extends \basic_testcase {
             [PARAM_INT, ['type' => 'integer']],
             [PARAM_FLOAT, ['type' => 'number']],
             [PARAM_BOOL, ['type' => 'boolean']],
-            [PARAM_URL, ['type' => 'string', 'format' => 'uri']],
-            [PARAM_EMAIL, ['type' => 'string', 'format' => 'email']],
+            [PARAM_PERMISSION, ['type' => 'integer']],
+            // Relative URLs and '' are valid PARAM_URL values.
+            [PARAM_URL, ['type' => 'string', 'format' => 'uri-reference']],
+            // An invalid address is cleaned to '', which format "email" rejects.
+            [PARAM_EMAIL, ['type' => 'string']],
+            // Request bodies are form-encoded: a raw value arrives as a string.
+            [PARAM_RAW, ['type' => 'string']],
             // Not in type_mapper's explicit map: must fall back to "string".
             [PARAM_ALPHANUM, ['type' => 'string']],
             [PARAM_COMPONENT, ['type' => 'string']],
@@ -112,6 +117,60 @@ final class type_mapper_test extends \basic_testcase {
         $this->assertSame([], $schema['properties']['tags']['default']);
         $this->assertArrayNotHasKey('default', $schema['properties']['idnumber']);
         $this->assertSame(['string', 'null'], $schema['properties']['idnumber']['type']);
+    }
+
+    /**
+     * A PARAM_RAW return value is handed back uncleaned, so whatever
+     * scalar PHP had comes out as is.
+     */
+    public function test_raw_in_a_response_is_any_scalar(): void {
+        $value = new external_value(PARAM_RAW, '', VALUE_REQUIRED, null, NULL_NOT_ALLOWED);
+        $this->assertSame(['string', 'number', 'boolean'], type_mapper::map($value, true)['type']);
+
+        $value = new external_value(PARAM_RAW, '', VALUE_REQUIRED, null, NULL_ALLOWED);
+        $this->assertSame(['string', 'number', 'boolean', 'null'], type_mapper::map($value, true)['type']);
+    }
+
+    /**
+     * A default is documented as the value Moodle uses, not as written
+     * in PHP, and a default Moodle would reject is not documented.
+     */
+    public function test_parameter_defaults_are_cleaned_like_moodle_does(): void {
+        $structure = new external_single_structure([
+            'limit' => new external_value(PARAM_INT, '', VALUE_DEFAULT, '0'),
+            'visible' => new external_value(PARAM_BOOL, '', VALUE_DEFAULT, 1),
+            'courseid' => new external_value(PARAM_INT, '', VALUE_DEFAULT, null, NULL_NOT_ALLOWED),
+        ]);
+
+        $schema = type_mapper::map($structure);
+
+        $this->assertSame(0, $schema['properties']['limit']['default']);
+        $this->assertTrue($schema['properties']['visible']['default']);
+        $this->assertArrayNotHasKey('default', $schema['properties']['courseid']);
+    }
+
+    /**
+     * clean_returnvalue() fills in a missing VALUE_DEFAULT scalar, so it
+     * is always in the response; a missing VALUE_DEFAULT structure is not.
+     */
+    public function test_response_default_scalars_are_required(): void {
+        $structure = new external_single_structure([
+            'visible' => new external_value(PARAM_BOOL, '', VALUE_DEFAULT, true),
+            1 => new external_value(PARAM_INT, 'Numeric key, as in core_message', VALUE_DEFAULT, 0),
+            'note' => new external_value(PARAM_TEXT, '', VALUE_OPTIONAL),
+            'files' => new external_multiple_structure(
+                new external_value(PARAM_RAW, ''),
+                '',
+                VALUE_DEFAULT,
+                []
+            ),
+        ]);
+
+        $schema = type_mapper::map($structure, true);
+
+        $this->assertSame(['visible', '1'], $schema['required']);
+        $this->assertArrayNotHasKey('default', $schema['properties']['visible']);
+        $this->assertArrayNotHasKey('default', $schema['properties']['files']);
     }
 
     /**

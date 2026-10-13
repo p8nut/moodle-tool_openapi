@@ -37,6 +37,17 @@ its own $plugin->release line -- no need to reconcile entries across branches.
   (`courseids[0]=2`, `users[0][username]=…`), booleans as `0`/`1`, and
   unknown keys being rejected, with an `x-moodle-encoding: php-brackets`
   extension.
+- `PARAM_RAW` in a response is `string | number | boolean`: Moodle hands
+  the value back uncleaned, so a PHP int or bool reaches the client as is.
+  Request bodies, form-encoded, keep `string`. 3.0 spells it as an `anyOf`.
+- `PARAM_PERMISSION` is an `integer`.
+- `PARAM_URL` and `PARAM_LOCALURL` use `format: uri-reference` (relative URLs
+  and `''` are valid values); `PARAM_EMAIL` has no `format`, since an invalid
+  address is cleaned to `''`.
+- Parameter defaults are documented as the value Moodle uses (`0`, not
+  `"0"`; `true`, not `1`), and a default Moodle would reject is left out.
+- A `VALUE_DEFAULT` scalar in a response is `required`: Moodle fills it in
+  when the function leaves it out.
 
 ## [1.0.0]
 

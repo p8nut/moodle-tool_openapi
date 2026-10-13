@@ -257,7 +257,7 @@ final class document_builder {
      * @return array
      */
     private static function build_responses(?external_description $returns): array {
-        $success = $returns === null ? ['type' => 'null'] : type_mapper::map($returns);
+        $success = $returns === null ? ['type' => 'null'] : type_mapper::map($returns, true);
 
         return [
             '200' => [

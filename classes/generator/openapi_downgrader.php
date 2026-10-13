@@ -22,7 +22,8 @@ namespace tool_openapi\generator;
  *
  * One generator, two outputs, two rewrites in the same recursive pass:
  * - a nullable field's "type": [X, "null"] (valid in 3.1, not in 3.0)
- *   becomes 3.0's own "type": X, "nullable": true;
+ *   becomes 3.0's own "type": X, "nullable": true, and several types an
+ *   anyOf (see downgrade_type_array());
  * - a single-value "const" (2020-12 JSON Schema, used for wsfunction's
  *   fixed-per-operation value) becomes a one-element "enum" -- the closest
  *   3.0's older JSON Schema dialect has, since it has no "const" keyword.
@@ -77,9 +78,7 @@ final class openapi_downgrader {
             $node['enum'] = [null];
         }
         if (isset($node['type']) && is_array($node['type'])) {
-            $realtypes = array_values(array_diff($node['type'], ['null']));
-            $node['type'] = $realtypes[0];
-            $node['nullable'] = true;
+            $node = self::downgrade_type_array($node);
         }
 
         if (array_key_exists('const', $node)) {
@@ -96,6 +95,30 @@ final class openapi_downgrader {
             $node[$key] = self::downgrade_tree($value);
         }
 
+        return $node;
+    }
+
+    /**
+     * Rewrite a 3.1 type array. One real type plus "null" becomes that type
+     * with nullable: true. Several real types (PARAM_RAW in a response) have
+     * no 3.0 spelling as a type, so they become an anyOf of single types,
+     * each nullable when null was one of them: 3.0 ignores nullable on a
+     * schema without a type.
+     *
+     * @param array $node A schema whose "type" is an array.
+     * @return array
+     */
+    private static function downgrade_type_array(array $node): array {
+        $nullable = in_array('null', $node['type'], true) ? ['nullable' => true] : [];
+        $realtypes = array_values(array_diff($node['type'], ['null']));
+
+        if (count($realtypes) === 1) {
+            $node['type'] = $realtypes[0];
+            return $node + $nullable;
+        }
+
+        unset($node['type']);
+        $node['anyOf'] = array_map(fn(string $type): array => ['type' => $type] + $nullable, $realtypes);
         return $node;
     }
 

@@ -85,7 +85,13 @@ to read the documentation. It is passed as `?wstoken=<token>`, the same way
 Moodle's own REST endpoint takes it -- not as a `Bearer` header, which is
 this plugin's own tokens.
 
-The token must not have expired, and its service must still be enabled.
+The token is accepted only when Moodle's own REST endpoint would accept it:
+web services enabled, token not expired, request from an address its IP
+restriction allows, session still open for a session-bound token, user
+confirmed, not suspended and not `nologin`, service enabled, and the
+service's required capability and allowed-users list (with their own expiry
+and IP restriction) satisfied. Maintenance mode is the one check left out:
+reading documentation runs no function.
 
 Scope: always exactly that token's service functions, computed live from
 `external_services_functions`. Never the full catalog, not even for an

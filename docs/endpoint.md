@@ -15,10 +15,16 @@ page, and never redirects to a login form.
 | `format` | `json`, `yaml` | `json` | Response encoding |
 | `version` | `3.1`, `3.0` | `3.1` | OpenAPI version to emit |
 | `service` | An external service shortname | — | Narrow to one service |
+| `protocol` | `rest`, `restful` | `rest` | Web service protocol the document targets |
 
 `version=3.0` exists because a good deal of tooling still cannot read 3.1.
 What it changes is described in
 [openapi-document.md](openapi-document.md#versions-and-formats).
+
+`protocol=restful` documents Catalyst's
+[webservice_restful](https://github.com/catalyst/moodle-webservice_restful)
+protocol instead of core's REST one, see
+[openapi-document.md](openapi-document.md#the-restful-protocol).
 
 `service` is applied **after** authorization and on top of the caller's own
 scope. Asking for a service your scope excludes returns the intersection,
@@ -53,6 +59,7 @@ Errors are JSON, with a single `error` key:
 | `400` | `{"error":"invalid_version"}` | `version` was not `3.1` or `3.0` |
 | `400` | `{"error":"invalid_format"}` | `format` was not `json` or `yaml` |
 | `400` | `{"error":"invalid_service"}` | No external service has that shortname |
+| `400` | `{"error":"invalid_protocol"}` | `protocol` was not `rest` or `restful` |
 | `403` | `{"error":"access_denied"}` | No enabled method authorized the request |
 
 `access_denied` never says *why*. Whether the method is off, the credential

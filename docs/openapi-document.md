@@ -114,6 +114,31 @@ several types become an `anyOf`, and a null-only response becomes a nullable
 `enum: [null]`.
 `?format=yaml` emits YAML instead of JSON.
 
+## The restful protocol
+
+Core's REST protocol has one URL for every function and a PHP-bracket form
+body, which no generated client produces on its own. With Catalyst's
+[webservice_restful](https://github.com/catalyst/moodle-webservice_restful)
+installed and enabled (*Site administration > Server > Web services > Manage
+protocols*), `?protocol=restful` documents that protocol instead, and a
+generated client works as is:
+
+- `servers` is `<site>/webservice/restful/server.php`, so each path is the
+  real URL of its function;
+- the token is an `apiKey` in the `Authorization` header (bare or
+  `Bearer <token>`); its user also needs `webservice/restful:use`;
+- the body is `application/json`, with the same schema;
+- `moodlewsrestformat` is gone. Send `Accept: application/json`: without it
+  the answer is XML;
+- errors are a `WebserviceError` under `400`, or `401` without an
+  `Authorization` header, and `200` is the result alone.
+
+Two answers are not documented per operation: the empty `403` when web
+services or the protocol are off, and a return value Moodle fails to
+validate, which still comes back as `200` with an error body. The plugin
+supports Moodle 4.2 to 4.5 on paper; it was checked against 5.3 for this
+document. The viewer keeps calling core's REST protocol.
+
 ## Extensions
 
 Each operation carries a few `x-moodle-*` fields that have no OpenAPI

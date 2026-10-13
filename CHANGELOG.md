@@ -74,6 +74,10 @@ its own $plugin->release line -- no need to reconcile entries across branches.
 
 ### Added
 
+- `?protocol=restful` documents Catalyst's `webservice_restful` protocol:
+  per-function URLs, the token in the `Authorization` header, JSON bodies
+  and errors under `400`/`401`. A client generated from it (checked with
+  hey-api) calls Moodle without any request rewriting.
 - The viewer's Try it out sends the body in Moodle's bracket syntax, rebuilt
   from the values typed in: arrays as `name[0]`, JSON objects flattened to
   `name[key]`, booleans as `1`/`0`, empty values left out. Swagger UI's own

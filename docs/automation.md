@@ -63,6 +63,11 @@ normalised copy, not on the raw bytes.
 - **Watch the API surface:** commit a normalised copy and let the pull request
   show what an upgrade added or removed.
 
+A client generated from the default document cannot call Moodle as is: core's
+REST protocol wants one URL and a PHP-bracket form body. With
+`webservice_restful` installed, generate from `?protocol=restful` instead, see
+[openapi-document.md](openapi-document.md#the-restful-protocol).
+
 If a generator rejects the document, try `?version=3.0` first: plenty of
 tooling still cannot read OpenAPI 3.1, and the plugin emits a 3.0 rendering of
 the same catalog.

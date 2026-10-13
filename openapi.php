@@ -62,6 +62,7 @@ function tool_openapi_send_error(int $httpstatus, string $error): void {
 $service = optional_param('service', null, PARAM_ALPHANUMEXT);
 $version = optional_param('version', '3.1', PARAM_RAW_TRIMMED);
 $format = optional_param('format', 'json', PARAM_ALPHA);
+$protocol = optional_param('protocol', 'rest', PARAM_ALPHA);
 
 if (!in_array($version, ['3.1', '3.0'], true)) {
     tool_openapi_send_error(400, 'invalid_version');
@@ -69,6 +70,10 @@ if (!in_array($version, ['3.1', '3.0'], true)) {
 }
 if (!in_array($format, ['json', 'yaml'], true)) {
     tool_openapi_send_error(400, 'invalid_format');
+    exit;
+}
+if (!in_array($protocol, ['rest', 'restful'], true)) {
+    tool_openapi_send_error(400, 'invalid_protocol');
     exit;
 }
 
@@ -90,6 +95,10 @@ if ($service !== null) {
 }
 
 $document = $scope->restrict($document);
+
+if ($protocol === 'restful') {
+    $document = \tool_openapi\generator\restful_converter::convert($document);
+}
 
 if ($version === '3.0') {
     $document = \tool_openapi\generator\openapi_downgrader::to_3_0($document);

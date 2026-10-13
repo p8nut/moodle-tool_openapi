@@ -21,9 +21,12 @@ POST /core_course_get_courses
 
 This is a documentation convenience, not a URL that exists. Each operation
 says so in three places: in its own `description`, in the
-`x-moodle-real-endpoint` extension, and by making `wsfunction` a required
-parameter pinned to that one function's name. The bundled viewer rewrites
-Try-it-out requests to the real endpoint automatically.
+`x-moodle-real-endpoint` extension, and in the path itself, whose last
+segment is always the `wsfunction` value: `/core_user_get_users` is
+`server.php?wsfunction=core_user_get_users`. `wsfunction` is therefore not
+declared as a parameter -- a field the caller could change but must not. A
+client maps the path to the real endpoint the same way; the bundled viewer
+does it for Try it out.
 
 ## Request shape
 
@@ -35,7 +38,7 @@ Parameters go in the query string:
 | Parameter | Notes |
 | --- | --- |
 | `wstoken` | Required. A Moodle webservice token, declared as the `wstoken` security scheme (`apiKey` in the query) rather than a parameter, so a viewer asks for it once and a generated client takes it as auth. |
-| `wsfunction` | Required, pinned to the operation's function by a one-value `enum` with that `default`, so a viewer fills it in. |
+| `wsfunction` | Required, and not a declared parameter: it is the last segment of the operation's path. |
 | `moodlewsrestformat` | Required, `json` only. Moodle answers in XML when it is omitted, and every response schema here is JSON. |
 
 The function's own arguments go in the body as

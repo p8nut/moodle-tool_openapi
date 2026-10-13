@@ -68,8 +68,9 @@ its own $plugin->release line -- no need to reconcile entries across branches.
   Authorize, and a generated client takes it as auth. The request on the
   wire is unchanged. Clients generated before this pass it per call and need
   regenerating.
-- `wsfunction` is a one-value `enum` with a `default` instead of a `const`,
-  so the viewer fills it in.
+- `wsfunction` is no longer a parameter: the path's last segment already
+  names the function, and the viewer adds it when it retargets Try it out to
+  `server.php`. A client maps the path the same way.
 
 ### Added
 

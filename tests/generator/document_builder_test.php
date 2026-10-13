@@ -150,11 +150,10 @@ final class document_builder_test extends \advanced_testcase {
             $operation['responses']['200']['content']['application/json']['schema']['anyOf']
         );
 
-        $wsfunctionparam = end($operation['parameters']);
-        $this->assertSame('wsfunction', $wsfunctionparam['name']);
-        $this->assertSame(['core_webservice_get_site_info'], $wsfunctionparam['schema']['enum']);
-        $this->assertSame('core_webservice_get_site_info', $wsfunctionparam['schema']['default']);
-        $this->assertNotContains('wstoken', array_column($operation['parameters'], 'name'));
+        // Both travel outside the operation's parameters: wstoken as the
+        // security scheme, wsfunction as the path's own name.
+        $this->assertSame([['$ref' => '#/components/parameters/moodlewsrestformat']], $operation['parameters']);
+        $this->assertStringContainsString('?wsfunction=core_webservice_get_site_info', $operation['description']);
     }
 
     /**

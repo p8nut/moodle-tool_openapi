@@ -30,17 +30,14 @@
  *
  * The document gives every function a path of its own because OpenAPI
  * cannot describe one path as many operations, but Moodle has a single REST
- * endpoint and selects the function with the wsfunction parameter. Swagger
- * UI would otherwise send the request to a path that does not exist, so the
- * path is swapped for the real endpoint while the query string -- which
- * already carries wsfunction, wstoken and moodlewsrestformat -- is kept as
- * the operation built it.
+ * endpoint and selects the function with the wsfunction parameter. The path
+ * already names the function, so the document does not repeat it as a
+ * parameter: it is taken from the path here, and the path swapped for the
+ * real endpoint, keeping the query string (wstoken, moodlewsrestformat) the
+ * operation built.
  *
- * Only operations are retargeted. Swagger UI puts the fetch of the document
- * itself through this same interceptor, and that one is already pointed at
- * the page that serves it; wsfunction is what tells the two apart, since
- * every operation declares it as a required parameter and nothing else has
- * it.
+ * Swagger UI puts the fetch of the document itself through this same
+ * interceptor, flagged with loadSpec; that one is left alone.
  *
  * @param {String} endpoint Absolute URL of Moodle's REST server
  * @param {Object} request The request Swagger UI is about to send
@@ -51,10 +48,15 @@ const retarget = (endpoint, request) => {
     // so the fetch has to carry the session cookie.
     request.credentials = 'same-origin';
 
-    const query = request.url.indexOf('?');
-    if (query !== -1 && request.url.indexOf('wsfunction=') !== -1) {
-        request.url = endpoint + request.url.substring(query);
+    if (request.loadSpec) {
+        return request;
     }
+
+    const url = new URL(request.url);
+    const target = new URL(endpoint);
+    url.searchParams.forEach((value, name) => target.searchParams.append(name, value));
+    target.searchParams.set('wsfunction', url.pathname.split('/').pop());
+    request.url = target.toString();
 
     return request;
 };

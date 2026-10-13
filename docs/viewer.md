@@ -51,9 +51,9 @@ only authorize reading documentation. Create one under **Site administration
 service that includes it. The viewer documents what the site exposes; it does
 not grant anything.
 
-Swagger UI adds it to every request as `?wstoken=`. `wsfunction` arrives
-filled in — the document pins it per operation with a one-value `enum` and
-its `default` — and `moodlewsrestformat` defaults to `json`. Without that last one Moodle
+Swagger UI adds it to every request as `?wstoken=`. There is no
+`wsfunction` field: the viewer takes it from the operation's path. And
+`moodlewsrestformat` defaults to `json`. Without that last one Moodle
 answers in XML.
 
 ### Why the URL in the request is not the URL in the path
@@ -62,7 +62,8 @@ Each function is documented at a path of its own (`/core_user_get_users`),
 because OpenAPI cannot describe one path as several hundred operations.
 Moodle has a single endpoint and selects the function with a parameter. So
 before sending, the viewer rewrites the request to
-`/webservice/rest/server.php`, keeping the query string the operation built.
+`/webservice/rest/server.php?wsfunction=<the path's name>`, keeping the
+query string the operation built.
 
 Only operations are rewritten. The viewer's own fetch of the document is left
 alone.

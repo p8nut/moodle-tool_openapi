@@ -37,8 +37,9 @@ use core_external\external_description;
  * this path is an organisational convenience, not the literal request target.
  *
  * The request shape documented here (requestBody as
- * application/x-www-form-urlencoded, wstoken/wsfunction/moodlewsrestformat
- * as query parameters) is not a guess: webservice/rest/lib.php's
+ * application/x-www-form-urlencoded, moodlewsrestformat as a query
+ * parameter, wstoken as a query apiKey, wsfunction as the path's own name)
+ * is not a guess: webservice/rest/lib.php's
  * parse_request() does array_merge($_GET, $_POST) and never reads a JSON
  * body -- confirmed reading that file directly, not assumed from Moodle's
  * public docs, since PHP only auto-populates $_POST for
@@ -257,8 +258,8 @@ final class document_builder {
      */
     private static function build_path_item(\stdClass $info): array {
         $realendpointnote = 'Real request target: POST ' . self::REAL_ENDPOINT
-            . ' with wsfunction=' . $info->name . ' merged into the query string or form body -- '
-            . 'this path exists for documentation only, Moodle has no per-function URL.';
+            . '?wsfunction=' . $info->name . ' -- this path exists for documentation only, Moodle has '
+            . 'no per-function URL. Its last segment is always the wsfunction value.';
 
         $operation = [
             'operationId' => $info->name,
@@ -268,16 +269,11 @@ final class document_builder {
             'x-moodle-real-endpoint' => self::REAL_ENDPOINT,
             'x-moodle-capabilities' => empty($info->capabilities) ? [] : explode(',', $info->capabilities),
             'x-moodle-ajax-allowed' => $info->allowed_from_ajax ?? false,
+            // No wsfunction parameter: the path already names the function,
+            // and a value the caller could change but must not would only
+            // invite a request to the wrong function.
             'parameters' => [
                 ['$ref' => '#/components/parameters/moodlewsrestformat'],
-                // An enum of one with a default, not a const: a viewer fills
-                // a default in, and Swagger UI does nothing with const.
-                [
-                    'name' => 'wsfunction',
-                    'in' => 'query',
-                    'required' => true,
-                    'schema' => ['type' => 'string', 'enum' => [$info->name], 'default' => $info->name],
-                ],
             ],
             'requestBody' => [
                 'required' => true,
@@ -386,8 +382,7 @@ final class document_builder {
     /**
      * Parameters identical across every operation, referenced by $ref
      * instead of repeated in each of the (possibly hundreds of) operations.
-     * wsfunction is not here -- its value differs per operation, see
-     * build_path_item().
+     * wsfunction is not a parameter at all, see build_path_item().
      *
      * @return array
      */

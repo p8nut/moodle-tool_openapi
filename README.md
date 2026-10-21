@@ -58,6 +58,21 @@ The long version, with what to check at each step, is in
 
 The index with a one-line summary of each is at [docs/](docs/README.md).
 
+## From the command line
+
+Whoever can run PHP on the site can write the document without a request,
+a token or an access method turned on:
+
+```console
+$ php admin/tool/openapi/cli/generate.php --service=my_service --protocol=restful --output=openapi.json
+```
+
+`--service` and `--protocol` mean what they mean on the endpoint; without
+`--output` the JSON goes to standard output. The document is built fresh,
+not read from the cache, and its server URL is relative to the site. An
+unknown service or protocol is an error on standard error with a non-zero
+exit status. See [docs/automation.md](docs/automation.md#from-the-command-line).
+
 ## What it is not
 
 - **Not a webservice client.** It documents the API; it does not call it for

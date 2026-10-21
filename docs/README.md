@@ -31,7 +31,7 @@ able to read the catalog.
 
 ## Beyond one site
 
-- **[Automation](automation.md)** — pulling the document from a pipeline,
+- **[Automation](automation.md)** — pulling the document from a pipeline or the command line,
   keeping a snapshot under version control, and generating clients from it.
 
 ## When something goes wrong

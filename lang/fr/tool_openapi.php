@@ -64,6 +64,7 @@ $string['gatetoken_desc'] = 'Une requête portant un jeton émis par ce plugin, 
 $string['gatewstoken'] = 'Jeton de service web existant';
 $string['gatewstoken_desc'] = 'Une requête portant un jeton de service web Moodle existant, réutilisé pour lire la documentation plutôt que d\'émettre un second secret.';
 $string['invalidiprange'] = 'Ce n\'est pas une adresse IP ni une plage CIDR valide.';
+$string['invalidprotocol'] = 'Protocole inconnu « {$a} » : utilisez rest ou restful.';
 $string['invalidservice'] = 'Aucun service externe ne porte le nom abrégé « {$a} ».';
 $string['iprange'] = 'Adresse IP ou plage CIDR';
 $string['iprange_desc'] = 'Une adresse unique (192.0.2.1) ou une plage CIDR (192.0.2.0/24). Plusieurs entrées peuvent être séparées par des virgules.';

@@ -74,6 +74,10 @@ its own $plugin->release line -- no need to reconcile entries across branches.
 
 ### Added
 
+- `cli/generate.php` writes the document from the command line, without a
+  request or a token: `--service`, `--protocol` and `--output`, built fresh
+  with server URLs relative to the site. An unknown service or protocol
+  exits non-zero.
 - `?protocol=restful` documents Catalyst's `webservice_restful` protocol:
   per-function URLs, the token in the `Authorization` header, JSON bodies
   and errors under `400`/`401`. A client generated from it (checked with

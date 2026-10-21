@@ -64,6 +64,7 @@ $string['gatetoken_desc'] = 'Um pedido com um token emitido por este plugin, env
 $string['gatewstoken'] = 'Token de serviço web existente';
 $string['gatewstoken_desc'] = 'Um pedido com um token de serviço web do Moodle já existente, reutilizado para ler a documentação em vez de emitir um segundo segredo.';
 $string['invalidiprange'] = 'Não é um endereço IP nem um intervalo CIDR válido.';
+$string['invalidprotocol'] = 'Protocolo desconhecido «{$a}»: use rest ou restful.';
 $string['invalidservice'] = 'Não existe nenhum serviço externo com o nome abreviado «{$a}».';
 $string['iprange'] = 'Endereço IP ou intervalo CIDR';
 $string['iprange_desc'] = 'Um endereço único (192.0.2.1) ou um intervalo CIDR (192.0.2.0/24). Podem indicar-se vários separados por vírgulas.';
